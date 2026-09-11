@@ -137,6 +137,38 @@
           </div>
         </section>
 
+        <section id="support" class="mt-14 scroll-mt-24">
+          <SectionHeading :number="'07'" :title="copy.supportTitle" :description="copy.supportDescription" />
+          <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <InfoPanel :title="copy.qqGroupLabel" :value="copy.qqGroupValue" :copy-label="copy.copy" :copied="copiedKey === 'qqGroup'" @copy="copyValue(copy.qqGroupValue, 'qqGroup')" />
+            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-sm font-medium text-gray-600 dark:text-dark-300">{{ copy.qqLabel }}</span>
+                <a
+                  href="https://wpa.qq.com/msgrd?v=3&uin=3935287835&site=qq&menu=yes"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-500/10"
+                >
+                  <Icon name="externalLink" size="xs" />
+                  {{ copy.contactNow }}
+                </a>
+              </div>
+              <div class="mt-3 flex items-center justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-dark-800">
+                <code class="break-all text-xs text-gray-800 dark:text-dark-200">3935287835</code>
+                <button
+                  type="button"
+                  class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:text-primary-300 dark:hover:bg-primary-500/20"
+                  @click="copyValue('3935287835', 'qq')"
+                >
+                  <Icon :name="copiedKey === 'qq' ? 'check' : 'copy'" size="xs" />
+                  {{ copiedKey === 'qq' ? copy.copied : copy.copy }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <footer class="mt-16 border-t border-gray-200 pt-6 text-sm text-gray-500 dark:border-dark-800 dark:text-dark-400">
           {{ copy.footer }}
         </footer>
@@ -173,6 +205,7 @@ const copy = computed(() => isZh.value ? {
   modelsTitle: '模型与价格', modelsDescription: '价格按每百万 Token 展示，输入和输出分别计费；缓存命中会按缓存价格计费。', model: '模型', positioning: '定位', inputPrice: '输入 / 1M', outputPrice: '输出 / 1M', priceNote: '实际扣费以平台当前渠道定价为准。余额不足时请求会被拒绝，不会产生负余额。',
   examplesTitle: '调用示例', examplesDescription: '下面示例使用 Responses API。将示例中的 API Key 替换为你在控制台创建的 Key。', curlTitle: 'cURL', pythonTitle: 'Python（OpenAI SDK）', copy: '复制', copied: '已复制',
   troubleshootingTitle: '排查与常见问题', troubleshootingDescription: '遇到问题时先确认地址、Key、模型和余额都来自同一个 AIRouter 账户。',
+  supportTitle: '联系客服', supportDescription: '遇到接口、充值或账号问题，可通过QQ群或QQ联系我们。', qqGroupLabel: 'QQ群', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: '联系QQ',
   footer: 'AIRouter · Codex API 中转服务',
   steps: {
     register: { title: '注册并登录', body: '支持邮箱和 Linux.do 登录。完成注册并登录后，系统会按当前活动规则发放新用户余额。' },
@@ -201,6 +234,7 @@ const copy = computed(() => isZh.value ? {
   modelsTitle: 'Models and pricing', modelsDescription: 'Prices are shown per million tokens. Input and output are billed separately; cached tokens use their cache rate.', model: 'Model', positioning: 'Positioning', inputPrice: 'Input / 1M', outputPrice: 'Output / 1M', priceNote: 'Actual charges follow the platform pricing currently configured. Requests are rejected when the balance is insufficient; balances do not go negative.',
   examplesTitle: 'Examples', examplesDescription: 'The examples below use the Responses API. Replace the placeholder API key with a key created in your console.', curlTitle: 'cURL', pythonTitle: 'Python (OpenAI SDK)', copy: 'Copy', copied: 'Copied',
   troubleshootingTitle: 'Troubleshooting', troubleshootingDescription: 'When something fails, first confirm that the endpoint, key, model, and wallet all belong to the same AIRouter account.',
+  supportTitle: 'Contact support', supportDescription: 'For API, wallet, or account issues, contact us through the QQ group or QQ.', qqGroupLabel: 'QQ group', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: 'Contact on QQ',
   footer: 'AIRouter · Codex API relay service',
   steps: {
     register: { title: 'Register and sign in', body: 'Sign up with email or Linux.do. After registration and sign-in, new-account credit is granted according to the current promotion rules.' },
@@ -227,7 +261,8 @@ const sections = computed(() => [
   { id: 'wallet', title: copy.value.walletTitle },
   { id: 'models', title: copy.value.modelsTitle },
   { id: 'examples', title: copy.value.examplesTitle },
-  { id: 'troubleshooting', title: copy.value.troubleshootingTitle }
+  { id: 'troubleshooting', title: copy.value.troubleshootingTitle },
+  { id: 'support', title: copy.value.supportTitle }
 ])
 
 const walletPoints = computed(() => copy.value.walletPoints)
