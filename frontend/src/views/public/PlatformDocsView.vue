@@ -11,12 +11,6 @@
 
         <div class="flex items-center gap-2">
           <LocaleSwitcher />
-          <RouterLink
-            to="/login"
-            class="inline-flex h-9 items-center justify-center rounded-lg bg-primary-600 px-3 text-sm font-medium text-white transition hover:bg-primary-700"
-          >
-            {{ copy.login }}
-          </RouterLink>
         </div>
       </div>
     </header>
