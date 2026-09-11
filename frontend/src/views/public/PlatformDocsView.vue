@@ -9,7 +9,43 @@
           <span class="truncate text-sm font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
         </RouterLink>
 
-        <div class="flex items-center gap-2">
+        <div class="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
+          <div ref="searchContainerRef" class="relative block min-w-0 w-full max-w-lg">
+            <div
+              class="flex h-10 items-center gap-2 rounded-xl bg-gray-100 px-3 text-gray-500 transition focus-within:bg-gray-50 focus-within:ring-2 focus-within:ring-primary-500/20 dark:bg-dark-800 dark:text-dark-400 dark:focus-within:bg-dark-850"
+            >
+              <Icon name="search" size="sm" class="shrink-0" />
+              <input
+                ref="searchInputRef"
+                v-model="searchQuery"
+                type="search"
+                :placeholder="copy.searchPlaceholder"
+                :aria-label="copy.searchDocs"
+                class="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-500 dark:text-dark-100 dark:placeholder:text-dark-400"
+                @focus="searchOpen = true"
+                @keydown.esc="closeSearch"
+              />
+              <kbd class="hidden shrink-0 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-500 shadow-sm lg:inline dark:border-dark-700 dark:bg-dark-900 dark:text-dark-400">⌘ K</kbd>
+            </div>
+            <div
+              v-if="searchOpen && searchQuery.trim()"
+              class="absolute right-0 top-12 z-50 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-900"
+            >
+              <div v-if="searchResults.length" class="max-h-80 overflow-y-auto p-1.5">
+                <a
+                  v-for="result in searchResults"
+                  :key="result.id"
+                  :href="`#${result.id}`"
+                  class="block rounded-lg px-3 py-2.5 transition hover:bg-gray-100 dark:hover:bg-dark-800"
+                  @click="closeSearch"
+                >
+                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ result.title }}</div>
+                  <div class="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500 dark:text-dark-400">{{ result.description }}</div>
+                </a>
+              </div>
+              <div v-else class="px-3 py-4 text-sm text-gray-500 dark:text-dark-400">{{ copy.searchEmpty }}</div>
+            </div>
+          </div>
           <LocaleSwitcher />
         </div>
       </div>
@@ -172,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -183,6 +219,10 @@ import { sanitizeUrl } from '@/utils/url'
 const { locale } = useI18n()
 const appStore = useAppStore()
 const copiedKey = ref('')
+const searchQuery = ref('')
+const searchOpen = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+const searchContainerRef = ref<HTMLElement | null>(null)
 
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'AIRouter')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
@@ -190,13 +230,13 @@ const baseUrl = 'http://100.90.218.124:18080/v1'
 const isZh = computed(() => locale.value.startsWith('zh'))
 
 const copy = computed(() => isZh.value ? {
-  docs: '平台文档', contents: '文档目录', login: '登录', eyebrow: 'AIRouter 开发者文档', title: '快速开始',
+  docs: '平台文档', contents: '文档目录', login: '登录', searchDocs: '搜索文档', searchPlaceholder: '搜索文档...', searchEmpty: '没有找到匹配的内容', eyebrow: 'AIRouter 开发者文档', title: '快速开始',
   intro: '用一个钱包和一个 API Key，接入 AIRouter 的 Codex 模型。本文档覆盖从注册、充值到第一次 API 调用的完整流程。',
   startNow: '从快速开始', updated: '适用于当前 AIRouter 接口', quickStartTitle: '快速开始', quickStartDescription: '按照下面四步完成第一次调用。AIRouter 采用钱包余额按 Token 消耗计费，不提供订阅套餐。',
   tipLabel: '提示：', quickTip: 'API Key 只显示一次，请在创建后立即保存。不同应用建议使用不同 Key，便于单独停用和查看用量。',
   endpointTitle: '接口地址', endpointDescription: '所有 OpenAI 兼容请求都使用同一个 Base URL。客户端会在它后面拼接具体资源路径。', baseUrlLabel: 'OpenAI 兼容 Base URL', responsesLabel: 'Responses API', endpointTableTitle: '常用地址',
   walletTitle: '钱包与计费', walletDescription: '注册奖励、邀请奖励和充值余额统一显示在钱包中，调用产生的费用从可用余额扣除。',
-  modelsTitle: '模型与价格', modelsDescription: '价格按每百万 Token 展示，输入和输出分别计费；缓存命中会按缓存价格计费。', model: '模型', positioning: '定位', inputPrice: '输入 / 1M', outputPrice: '输出 / 1M', priceNote: '实际扣费以平台当前渠道定价为准。余额不足时请求会被拒绝，不会产生负余额。',
+  modelsTitle: '模型与价格', modelsDescription: '价格按每百万 Token 展示，输入和输出分别计费。', model: '模型', positioning: '定位', inputPrice: '输入 / 1M', outputPrice: '输出 / 1M', priceNote: '实际扣费以平台当前渠道定价为准。余额不足时请求会被拒绝，不会产生负余额。',
   examplesTitle: '调用示例', examplesDescription: '下面示例使用 Responses API。将示例中的 API Key 替换为你在控制台创建的 Key。', curlTitle: 'cURL', pythonTitle: 'Python（OpenAI SDK）', copy: '复制', copied: '已复制',
   troubleshootingTitle: '排查与常见问题', troubleshootingDescription: '遇到问题时先确认地址、Key、模型和余额都来自同一个 AIRouter 账户。',
   supportTitle: '联系客服', supportDescription: '遇到接口、充值或账号问题，可通过QQ群或QQ联系我们。', qqGroupLabel: 'QQ群', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: '联系QQ',
@@ -219,13 +259,13 @@ const copy = computed(() => isZh.value ? {
     { title: '请求超时或 503', body: '先检查网络和模型名称，再稍后重试。持续出现时保留请求时间、模型和错误 request id，联系平台管理员。' }
   ]
 } : {
-  docs: 'Platform Docs', contents: 'Documentation', login: 'Sign in', eyebrow: 'AIRouter Developer Docs', title: 'Quick Start',
+  docs: 'Platform Docs', contents: 'Documentation', login: 'Sign in', searchDocs: 'Search documentation', searchPlaceholder: 'Search documentation...', searchEmpty: 'No matching content found', eyebrow: 'AIRouter Developer Docs', title: 'Quick Start',
   intro: 'Connect to AIRouter Codex models with one wallet and one API key. This guide covers registration, wallet top-up, API key creation, and your first request.',
   startNow: 'Start here', updated: 'For the current AIRouter API', quickStartTitle: 'Quick start', quickStartDescription: 'Complete your first request in four steps. AIRouter uses wallet-based, pay-as-you-go token billing instead of subscriptions.',
   tipLabel: 'Tip: ', quickTip: 'An API key is shown only once. Save it immediately after creation. Use separate keys for separate applications so each can be disabled and monitored independently.',
   endpointTitle: 'Endpoint', endpointDescription: 'All OpenAI-compatible requests use the same Base URL. Your client appends the resource path it needs.', baseUrlLabel: 'OpenAI-compatible Base URL', responsesLabel: 'Responses API', endpointTableTitle: 'Common URLs',
   walletTitle: 'Wallet and billing', walletDescription: 'Registration rewards, invite rewards, and top-ups are shown in the same wallet. Usage is deducted from the available balance.',
-  modelsTitle: 'Models and pricing', modelsDescription: 'Prices are shown per million tokens. Input and output are billed separately; cached tokens use their cache rate.', model: 'Model', positioning: 'Positioning', inputPrice: 'Input / 1M', outputPrice: 'Output / 1M', priceNote: 'Actual charges follow the platform pricing currently configured. Requests are rejected when the balance is insufficient; balances do not go negative.',
+  modelsTitle: 'Models and pricing', modelsDescription: 'Prices are shown per million tokens. Input and output are billed separately.', model: 'Model', positioning: 'Positioning', inputPrice: 'Input / 1M', outputPrice: 'Output / 1M', priceNote: 'Actual charges follow the platform pricing currently configured. Requests are rejected when the balance is insufficient; balances do not go negative.',
   examplesTitle: 'Examples', examplesDescription: 'The examples below use the Responses API. Replace the placeholder API key with a key created in your console.', curlTitle: 'cURL', pythonTitle: 'Python (OpenAI SDK)', copy: 'Copy', copied: 'Copied',
   troubleshootingTitle: 'Troubleshooting', troubleshootingDescription: 'When something fails, first confirm that the endpoint, key, model, and wallet all belong to the same AIRouter account.',
   supportTitle: 'Contact support', supportDescription: 'For API, wallet, or account issues, contact us through the QQ group or QQ.', qqGroupLabel: 'QQ group', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: 'Contact on QQ',
@@ -262,6 +302,64 @@ const sections = computed(() => [
 const walletPoints = computed(() => copy.value.walletPoints)
 const troubleshooting = computed(() => copy.value.troubleshooting)
 
+const searchResults = computed(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase()
+  if (!query) return []
+
+  return sections.value
+    .map((section) => ({
+      ...section,
+      description: sectionDescription(section.id)
+    }))
+    .filter((section) => `${section.title} ${section.description}`.toLocaleLowerCase().includes(query))
+})
+
+function sectionDescription(id: string) {
+  const descriptions: Record<string, string> = {
+    'quick-start': copy.value.quickStartDescription,
+    endpoint: copy.value.endpointDescription,
+    wallet: copy.value.walletDescription,
+    models: copy.value.modelsDescription,
+    examples: copy.value.examplesDescription,
+    troubleshooting: copy.value.troubleshootingDescription,
+    support: copy.value.supportDescription
+  }
+  return descriptions[id] || ''
+}
+
+function closeSearch() {
+  searchOpen.value = false
+}
+
+function focusSearch() {
+  searchOpen.value = true
+  window.setTimeout(() => searchInputRef.value?.focus(), 0)
+}
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    focusSearch()
+  }
+  if (event.key === 'Escape') closeSearch()
+}
+
+function handleDocumentClick(event: MouseEvent) {
+  if (searchContainerRef.value && !searchContainerRef.value.contains(event.target as Node)) {
+    closeSearch()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleGlobalKeydown)
+  document.addEventListener('click', handleDocumentClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
+  document.removeEventListener('click', handleDocumentClick)
+})
+
 const endpointRows = computed(() => isZh.value ? [
   { name: 'OpenAI Chat Completions', value: `${baseUrl}/chat/completions` },
   { name: 'OpenAI Responses', value: `${baseUrl}/responses` },
@@ -273,15 +371,15 @@ const endpointRows = computed(() => isZh.value ? [
 ])
 
 const models = computed(() => isZh.value ? [
-  { name: 'gpt-5.6-sol', positioning: '高阶 / 复杂任务', input: '$6', output: '$36' },
-  { name: 'gpt-5.5', positioning: '标准 / 通用任务', input: '$5', output: '$30' },
-  { name: 'gpt-5.6-luna', positioning: '经济 / 高频调用', input: '$1', output: '$6' },
-  { name: 'gpt-6-astra', positioning: '旗舰 / 高性能', input: '$10', output: '$50' }
+  { name: 'GPT-6 Astra', positioning: '旗舰', input: '$12', output: '$60' },
+  { name: 'GPT-5.6 Sol', positioning: '高阶', input: '$5', output: '$25' },
+  { name: 'GPT-5.5', positioning: '标准', input: '$6', output: '$36' },
+  { name: 'GPT-5.6 Luna', positioning: '经济', input: '$0.5', output: '$3' }
 ] : [
-  { name: 'gpt-5.6-sol', positioning: 'Advanced / complex tasks', input: '$6', output: '$36' },
-  { name: 'gpt-5.5', positioning: 'Standard / general tasks', input: '$5', output: '$30' },
-  { name: 'gpt-5.6-luna', positioning: 'Economy / high-volume calls', input: '$1', output: '$6' },
-  { name: 'gpt-6-astra', positioning: 'Flagship / high performance', input: '$10', output: '$50' }
+  { name: 'GPT-6 Astra', positioning: 'Flagship', input: '$12', output: '$60' },
+  { name: 'GPT-5.6 Sol', positioning: 'Advanced', input: '$5', output: '$25' },
+  { name: 'GPT-5.5', positioning: 'Standard', input: '$6', output: '$36' },
+  { name: 'GPT-5.6 Luna', positioning: 'Economy', input: '$0.5', output: '$3' }
 ])
 
 const curlExample = [
