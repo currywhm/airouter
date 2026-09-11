@@ -63,8 +63,11 @@ func TestNewAlipay(t *testing.T) {
 	t.Parallel()
 
 	validConfig := map[string]string{
-		"appId":      "2021001234567890",
-		"privateKey": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...",
+		"appId":               "2021001234567890",
+		"privateKey":          "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...",
+		"appCertPublicKey":    "-----BEGIN CERTIFICATE-----\napp\n-----END CERTIFICATE-----",
+		"alipayCertPublicKey": "-----BEGIN CERTIFICATE-----\nalipay\n-----END CERTIFICATE-----",
+		"alipayRootCert":      "-----BEGIN CERTIFICATE-----\nroot\n-----END CERTIFICATE-----",
 	}
 
 	// helper to clone and override config fields

@@ -42,7 +42,7 @@ var (
 // Alipay implements payment.Provider and payment.CancelableProvider using the smartwalle/alipay SDK.
 type Alipay struct {
 	instanceID string
-	config     map[string]string // appId, privateKey, publicKey (or alipayPublicKey), notifyUrl, returnUrl
+	config     map[string]string // appId, privateKey, appCertPublicKey, alipayCertPublicKey, alipayRootCert, notifyUrl, returnUrl
 
 	mu     sync.Mutex
 	client *alipay.Client
@@ -50,7 +50,9 @@ type Alipay struct {
 
 // NewAlipay creates a new Alipay provider instance.
 func NewAlipay(instanceID string, config map[string]string) (*Alipay, error) {
-	required := []string{"appId", "privateKey"}
+	// Use certificate mode exclusively. The certificate serial numbers are
+	// derived by the SDK, so they must not be entered or maintained manually.
+	required := []string{"appId", "privateKey", "appCertPublicKey", "alipayCertPublicKey", "alipayRootCert"}
 	for _, k := range required {
 		if config[k] == "" {
 			return nil, fmt.Errorf("alipay config missing required key: %s", k)
@@ -72,15 +74,14 @@ func (a *Alipay) getClient() (*alipay.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("alipay init client: %w", err)
 	}
-	pubKey := a.config["publicKey"]
-	if pubKey == "" {
-		pubKey = a.config["alipayPublicKey"]
+	if err := client.LoadAppCertPublicKey(a.config["appCertPublicKey"]); err != nil {
+		return nil, fmt.Errorf("alipay load app public certificate: %w", err)
 	}
-	if pubKey == "" {
-		return nil, fmt.Errorf("alipay config missing required key: publicKey (or alipayPublicKey)")
+	if err := client.LoadAlipayCertPublicKey(a.config["alipayCertPublicKey"]); err != nil {
+		return nil, fmt.Errorf("alipay load alipay public certificate: %w", err)
 	}
-	if err := client.LoadAliPayPublicKey(pubKey); err != nil {
-		return nil, fmt.Errorf("alipay load public key: %w", err)
+	if err := client.LoadAliPayRootCert(a.config["alipayRootCert"]); err != nil {
+		return nil, fmt.Errorf("alipay load root certificate: %w", err)
 	}
 	a.client = client
 	return a.client, nil

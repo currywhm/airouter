@@ -744,10 +744,13 @@ func validAlipayProviderConfig(t *testing.T) map[string]string {
 	t.Helper()
 
 	return map[string]string{
-		"appId":      "alipay-app-test",
-		"privateKey": "alipay-private-key-test",
-		"notifyUrl":  "https://merchant.example.com/alipay/notify",
-		"returnUrl":  "https://merchant.example.com/alipay/return",
+		"appId":               "alipay-app-test",
+		"privateKey":          "alipay-private-key-test",
+		"appCertPublicKey":    "alipay-app-cert-test",
+		"alipayCertPublicKey": "alipay-cert-test",
+		"alipayRootCert":      "alipay-root-cert-test",
+		"notifyUrl":           "https://merchant.example.com/alipay/notify",
+		"returnUrl":           "https://merchant.example.com/alipay/return",
 	}
 }
 
