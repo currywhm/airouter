@@ -497,14 +497,14 @@ func (s *AffiliateService) ClaimDailyCheckin(ctx context.Context, userID int64) 
 }
 
 func randomDailyCheckinReward() (float64, error) {
-	// Split the reward into two ranges: 1.0-1.9 has 60% probability and
-	// 2.0-3.0 has 40% probability. Generate tenths as integers so every
+	// Split the reward into two ranges: 1.0-1.9 has 70% probability and
+	// 2.0-3.0 has 30% probability. Generate tenths as integers so every
 	// possible reward has exactly one decimal place.
 	bucket, err := rand.Int(rand.Reader, big.NewInt(10))
 	if err != nil {
 		return 0, err
 	}
-	if bucket.Int64() < 6 {
+	if bucket.Int64() < 7 {
 		tenths, err := rand.Int(rand.Reader, big.NewInt(10))
 		if err != nil {
 			return 0, err
