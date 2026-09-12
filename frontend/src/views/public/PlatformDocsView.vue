@@ -4,7 +4,7 @@
       <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <RouterLink to="/login" class="flex min-w-0 items-center gap-3">
           <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-700">
-            <img :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
+            <img :src="siteLogo || '/logo.png'" :alt="siteName" class="h-full w-full object-contain" />
           </span>
           <span class="truncate text-sm font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
         </RouterLink>
@@ -228,7 +228,7 @@ const searchContainerRef = ref<HTMLElement | null>(null)
 
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'AIRouter')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
-const baseUrl = 'http://100.90.218.124:18080/v1'
+const baseUrl = 'https://airouter-api.zeabur.app/v1'
 const isZh = computed(() => locale.value.startsWith('zh'))
 
 const copy = computed(() => isZh.value ? {
@@ -244,7 +244,7 @@ const copy = computed(() => isZh.value ? {
   supportTitle: '联系客服', supportDescription: '遇到接口、充值或账号问题，可通过QQ群或QQ联系我们。', qqGroupLabel: 'QQ群', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: '联系QQ',
   footer: 'AIRouter · Codex API 中转服务',
   steps: {
-    register: { title: '注册并登录', body: '支持邮箱和 Linux.do 登录。完成注册并登录后，系统会按当前活动规则发放新用户余额。' },
+    register: { title: '注册并登录', body: '支持邮箱登录。完成注册并登录后，系统会按当前活动规则发放新用户余额。' },
     wallet: { title: '充值钱包', body: '进入控制台的钱包页面，选择充值金额和支付方式。平台不提供订阅，所有服务按实际 Token 用量扣费。' },
     key: { title: '创建 API Key', body: '打开 API 密钥页面，创建一个 Key，并选择可用的 Codex 分组。复制完整 Key 并妥善保存。' },
     client: { title: '配置客户端', body: '把 Base URL 设置为文档中的地址，把 API Key 填入客户端，并使用支持的模型名称发起请求。' }
@@ -273,7 +273,7 @@ const copy = computed(() => isZh.value ? {
   supportTitle: 'Contact support', supportDescription: 'For API, wallet, or account issues, contact us through the QQ group or QQ.', qqGroupLabel: 'QQ group', qqGroupValue: '1109173402', qqLabel: 'QQ', contactNow: 'Contact on QQ',
   footer: 'AIRouter · Codex API relay service',
   steps: {
-    register: { title: 'Register and sign in', body: 'Sign up with email or Linux.do. After registration and sign-in, new-account credit is granted according to the current promotion rules.' },
+    register: { title: 'Register and sign in', body: 'Sign up and sign in with email. After registration and sign-in, new-account credit is granted according to the current promotion rules.' },
     wallet: { title: 'Top up your wallet', body: 'Open Wallet in the console and choose an amount and payment method. There are no subscriptions; usage is billed by actual token consumption.' },
     key: { title: 'Create an API key', body: 'Open API Keys, create a key, and select an available Codex group. Copy the full key and store it securely.' },
     client: { title: 'Configure your client', body: 'Set the Base URL from this page, add your API key, and send a request using one of the supported model names.' }
