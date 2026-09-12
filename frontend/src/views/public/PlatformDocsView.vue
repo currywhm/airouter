@@ -374,12 +374,12 @@ const endpointRows = computed(() => isZh.value ? [
 
 const models = computed(() => isZh.value ? [
   { name: 'GPT-6 Astra', positioning: '旗舰', input: '$10', cacheInput: '$1', output: '$50' },
-  { name: 'GPT-5.6 Sol', positioning: '高阶', input: '$4', cacheInput: '$0.40', output: '$20' },
+  { name: 'GPT-5.6 Sol', positioning: '高阶', input: '$5', cacheInput: '$0.50', output: '$30' },
   { name: 'GPT-5.5', positioning: '标准', input: '$5', cacheInput: '$0.50', output: '$30' },
   { name: 'GPT-5.6 Luna', positioning: '经济', input: '$0.20', cacheInput: '$0.02', output: '$1.20' }
 ] : [
   { name: 'GPT-6 Astra', positioning: 'Flagship', input: '$10', cacheInput: '$1', output: '$50' },
-  { name: 'GPT-5.6 Sol', positioning: 'Advanced', input: '$4', cacheInput: '$0.40', output: '$20' },
+  { name: 'GPT-5.6 Sol', positioning: 'Advanced', input: '$5', cacheInput: '$0.50', output: '$30' },
   { name: 'GPT-5.5', positioning: 'Standard', input: '$5', cacheInput: '$0.50', output: '$30' },
   { name: 'GPT-5.6 Luna', positioning: 'Economy', input: '$0.20', cacheInput: '$0.02', output: '$1.20' }
 ])
