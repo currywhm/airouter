@@ -24,7 +24,7 @@ var (
 
 const (
 	affiliateInviteesLimit      = 100
-	AffiliateSignupRewardAmount = 5.0
+	AffiliateSignupRewardAmount = 3.0
 	// AffiliateCodeMinLength / AffiliateCodeMaxLength bound both system-generated
 	// 12-char codes and admin-customized codes (e.g. "VIP2026").
 	AffiliateCodeMinLength = 4
@@ -497,13 +497,25 @@ func (s *AffiliateService) ClaimDailyCheckin(ctx context.Context, userID int64) 
 }
 
 func randomDailyCheckinReward() (float64, error) {
-	// Generate tenths as an integer first so every possible reward has exactly
-	// one decimal place and no floating-point range edge can be selected.
-	tenths, err := rand.Int(rand.Reader, big.NewInt(21))
+	// Split the reward into two ranges: 1.0-1.9 has 60% probability and
+	// 2.0-3.0 has 40% probability. Generate tenths as integers so every
+	// possible reward has exactly one decimal place.
+	bucket, err := rand.Int(rand.Reader, big.NewInt(10))
 	if err != nil {
 		return 0, err
 	}
-	return float64(tenths.Int64()+10) / 10, nil
+	if bucket.Int64() < 6 {
+		tenths, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return 0, err
+		}
+		return float64(tenths.Int64()+10) / 10, nil
+	}
+	tenths, err := rand.Int(rand.Reader, big.NewInt(11))
+	if err != nil {
+		return 0, err
+	}
+	return float64(tenths.Int64()+20) / 10, nil
 }
 
 func (s *AffiliateService) dailyCheckinRepo() (DailyCheckinRepository, error) {

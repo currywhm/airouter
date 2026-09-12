@@ -709,7 +709,7 @@ export default {
     tips: {
       title: 'How It Works',
       line1: 'Share your affiliate code or invite link with new users.',
-      line2: 'When an invitee registers and logs in, you receive $5 directly in your wallet. Recharge rebates are also available at the configured rate.',
+      line2: 'When an invitee registers and logs in, you receive $3 directly in your wallet. Recharge rebates are also available at the configured rate.',
       line3: 'Transfer recharge rebate quota to balance at any time.',
       line4: 'Newly earned rebates may have a waiting period before they can be transferred.'
     }

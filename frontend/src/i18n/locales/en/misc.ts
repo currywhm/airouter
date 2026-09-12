@@ -91,7 +91,7 @@ export default {
     },
     inviteRewards: {
       title: 'Invite rewards',
-      hint: 'When an invitee registers and logs in, the inviter automatically receives $5 in the wallet.',
+      hint: 'When an invitee registers and logs in, the inviter automatically receives $3 in the wallet.',
       manage: 'Open invite center',
       invited: 'Successful invites',
       total: 'Total rewards',
