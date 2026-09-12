@@ -681,14 +681,11 @@ func TestConstants_值正确(t *testing.T) {
 		t.Errorf("UserInfoURL 不匹配: got %s", UserInfoURL)
 	}
 	if ClientID != "" {
-		t.Errorf("ClientID 不匹配: got %s", ClientID)
+		t.Errorf("ClientID 不应内置在源码中: got %s", ClientID)
 	}
 	secret, err := getClientSecret()
-	if err != nil {
-		t.Fatalf("getClientSecret 应返回默认值，但报错: %v", err)
-	}
-	if secret != "" {
-		t.Errorf("默认 client_secret 不匹配: got %s", secret)
+	if err == nil || secret != "" {
+		t.Errorf("未配置 client_secret 时应返回错误")
 	}
 	if RedirectURI != "http://localhost:8085/callback" {
 		t.Errorf("RedirectURI 不匹配: got %s", RedirectURI)

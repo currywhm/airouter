@@ -24,8 +24,11 @@ const (
 	TokenURL     = "https://oauth2.googleapis.com/token"
 	UserInfoURL  = "https://www.googleapis.com/oauth2/v2/userinfo"
 
-	// Antigravity OAuth 客户端凭证
+	// Antigravity OAuth client ID is supplied by deployment configuration.
 	ClientID = ""
+
+	// AntigravityOAuthClientIDEnv is the environment variable for the OAuth client ID.
+	AntigravityOAuthClientIDEnv = "ANTIGRAVITY_OAUTH_CLIENT_ID"
 
 	// AntigravityOAuthClientSecretEnv 是 Antigravity OAuth client_secret 的环境变量名。
 	AntigravityOAuthClientSecretEnv = "ANTIGRAVITY_OAUTH_CLIENT_SECRET"
@@ -69,18 +72,29 @@ var (
 	userAgentVersionResolver UserAgentVersionResolver
 )
 
-// defaultClientSecret 可通过环境变量 ANTIGRAVITY_OAUTH_CLIENT_SECRET 配置
+// defaultClientSecret and defaultClientID are loaded from deployment configuration.
 var defaultClientSecret = ""
+var defaultClientID = ClientID
 
 func init() {
+	if clientID := strings.TrimSpace(os.Getenv(AntigravityOAuthClientIDEnv)); clientID != "" {
+		defaultClientID = clientID
+	}
 	// 从环境变量读取版本号，未设置则使用默认值
 	if version := NormalizeUserAgentVersion(os.Getenv(AntigravityUserAgentVersionEnv)); version != "" {
 		defaultUserAgentVersion = version
 	}
-	// 从环境变量读取 client_secret，未设置则使用默认值
+	// 从环境变量读取 client_secret，未设置则保持未配置
 	if secret := os.Getenv(AntigravityOAuthClientSecretEnv); secret != "" {
 		defaultClientSecret = secret
 	}
+}
+
+func getClientID() (string, error) {
+	if strings.TrimSpace(defaultClientID) != "" {
+		return strings.TrimSpace(defaultClientID), nil
+	}
+	return "", infraerrors.Newf(http.StatusBadRequest, "ANTIGRAVITY_OAUTH_CLIENT_ID_MISSING", "missing antigravity oauth client_id; set %s", AntigravityOAuthClientIDEnv)
 }
 
 // NormalizeUserAgentVersion 校验并归一化 Antigravity User-Agent 版本号。
@@ -395,7 +409,7 @@ func base64URLEncode(data []byte) string {
 // BuildAuthorizationURL 构建 Google OAuth 授权 URL
 func BuildAuthorizationURL(state, codeChallenge string) string {
 	params := url.Values{}
-	params.Set("client_id", ClientID)
+	params.Set("client_id", strings.TrimSpace(defaultClientID))
 	params.Set("redirect_uri", RedirectURI)
 	params.Set("response_type", "code")
 	params.Set("scope", Scopes)
