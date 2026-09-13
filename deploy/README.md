@@ -300,16 +300,16 @@ Sub2API supports four methods to connect to Gemini:
 
 ### Method 1: Code Assist OAuth (Recommended for GCP Users)
 
-Uses the Gemini CLI OAuth client by default. Code Assist requires a GCP project.
-Google One can use the configured custom OAuth client without a GCP project.
+Uses `GEMINI_OAUTH_CLIENT_ID` and `GEMINI_OAUTH_CLIENT_SECRET` when configured.
+When they are empty, it falls back to the Gemini CLI OAuth client. Code Assist requires a GCP project.
+Google One does not require a GCP project.
 
-1. Leave `GEMINI_OAUTH_CLIENT_ID` and `GEMINI_OAUTH_CLIENT_SECRET` empty
+1. For the built-in client, leave `GEMINI_OAUTH_CLIENT_ID` and `GEMINI_OAUTH_CLIENT_SECRET` empty
 2. In the Admin UI, create a Gemini OAuth account and select **"Code Assist"** type
 3. Complete the OAuth flow in your browser
 
-> Note: Code Assist OAuth always uses the Gemini CLI client. Google One uses the configured
-> `GEMINI_OAUTH_CLIENT_ID` / `GEMINI_OAUTH_CLIENT_SECRET` when both are set, and otherwise
-> falls back to the Gemini CLI client.
+> Note: All Gemini OAuth types prefer the configured `GEMINI_OAUTH_CLIENT_ID` /
+> `GEMINI_OAUTH_CLIENT_SECRET`. If they are not set, the built-in Gemini CLI client is used.
 
 **Requirements:**
 - Google account with access to Google Cloud Platform
@@ -498,7 +498,7 @@ If you need to use AI Studio OAuth for Gemini accounts, add the OAuth client cre
    Environment=GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
    ```
 
-   如需使用“内置 Gemini CLI OAuth Client”（Code Assist / Google One），还需要注入：
+   如需在未配置自定义 Client 时使用“内置 Gemini CLI OAuth Client”，还需要注入：
    ```ini
    Environment=GEMINI_CLI_OAUTH_CLIENT_SECRET=GOCSPX-your-built-in-secret
    ```

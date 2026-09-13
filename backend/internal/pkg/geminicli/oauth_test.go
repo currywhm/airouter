@@ -484,10 +484,21 @@ func TestEffectiveOAuthConfig_GoogleOne(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "Code Assist 使用内置客户端",
+			name:         "Code Assist 使用内置客户端（空配置）",
 			input:        OAuthConfig{},
 			oauthType:    "code_assist",
 			wantClientID: GeminiCLIOAuthClientID,
+			wantScopes:   DefaultCodeAssistScopes,
+			wantErr:      false,
+		},
+		{
+			name: "Code Assist 使用自定义客户端",
+			input: OAuthConfig{
+				ClientID:     "custom-client-id",
+				ClientSecret: "custom-client-secret",
+			},
+			oauthType:    "code_assist",
+			wantClientID: "custom-client-id",
 			wantScopes:   DefaultCodeAssistScopes,
 			wantErr:      false,
 		},

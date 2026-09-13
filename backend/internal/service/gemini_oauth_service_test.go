@@ -69,7 +69,7 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 			wantProjectID: "",
 		},
 		{
-			name: "code_assist always forces built-in client even when custom client configured",
+			name: "code_assist uses custom client when configured",
 			cfg: &config.Config{
 				Gemini: config.GeminiConfig{
 					OAuth: config.GeminiOAuthConfig{
@@ -80,8 +80,8 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 			},
 			oauthType:     "code_assist",
 			projectID:     "my-gcp-project",
-			wantClientID:  "builtin-client-id",
-			wantRedirect:  geminicli.GeminiCLIRedirectURI,
+			wantClientID:  "custom-client-id",
+			wantRedirect:  geminicli.AIStudioOAuthRedirectURI,
 			wantScope:     geminicli.DefaultCodeAssistScopes,
 			wantProjectID: "my-gcp-project",
 		},
