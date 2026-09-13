@@ -148,7 +148,7 @@ func base64URLEncode(data []byte) string {
 }
 
 // EffectiveOAuthConfig returns the effective OAuth configuration.
-// oauthType: "code_assist" or "ai_studio" (defaults to "code_assist" if empty).
+// oauthType: "code_assist", "google_one", or "ai_studio" (defaults to "code_assist" if empty).
 //
 // If ClientID/ClientSecret is not provided, this falls back to the built-in Gemini CLI OAuth client.
 //
@@ -202,8 +202,8 @@ func EffectiveOAuthConfig(cfg OAuthConfig, oauthType string) (OAuthConfig, error
 				effective.Scopes = DefaultAIStudioScopes
 			}
 		case "google_one":
-			// Google One always uses built-in Gemini CLI client (same as code_assist)
-			// Built-in client can't request restricted scopes like generative-language.retriever or drive.readonly
+			// Google One uses Code Assist-compatible scopes. Custom clients may use
+			// their own explicitly configured scopes.
 			effective.Scopes = DefaultCodeAssistScopes
 		default:
 			// Default to Code Assist scopes
@@ -238,6 +238,14 @@ func EffectiveOAuthConfig(cfg OAuthConfig, oauthType string) (OAuthConfig, error
 	}
 
 	return effective, nil
+}
+
+// IsBuiltinOAuthClient reports whether clientID is the operator-provided
+// Gemini CLI client selected through the dedicated environment variable.
+// Custom OAuth clients must use the manual localhost callback flow.
+func IsBuiltinOAuthClient(clientID string) bool {
+	builtinClientID := strings.TrimSpace(os.Getenv(GeminiCLIOAuthClientIDEnv))
+	return builtinClientID != "" && builtinClientID == strings.TrimSpace(clientID)
 }
 
 func hasRestrictedScope(scope string) bool {

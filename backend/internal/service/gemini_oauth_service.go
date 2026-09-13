@@ -122,15 +122,15 @@ func (s *GeminiOAuthService) GenerateAuthURL(ctx context.Context, proxyID *int64
 	}
 
 	// OAuth client selection:
-	// - code_assist: always use built-in Gemini CLI OAuth client (public)
-	// - google_one: always use built-in Gemini CLI OAuth client (public)
+	// - code_assist: always use the built-in Gemini CLI OAuth client
+	// - google_one: use a configured client, falling back to the built-in client
 	// - ai_studio: requires a user-provided OAuth client
 	oauthCfg := geminicli.OAuthConfig{
 		ClientID:     s.cfg.Gemini.OAuth.ClientID,
 		ClientSecret: s.cfg.Gemini.OAuth.ClientSecret,
 		Scopes:       s.cfg.Gemini.OAuth.Scopes,
 	}
-	if oauthType == "code_assist" || oauthType == "google_one" {
+	if oauthType == "code_assist" {
 		// Force use of built-in Gemini CLI OAuth client
 		oauthCfg.ClientID = ""
 		oauthCfg.ClientSecret = ""
@@ -153,7 +153,7 @@ func (s *GeminiOAuthService) GenerateAuthURL(ctx context.Context, proxyID *int64
 		return nil, err
 	}
 
-	isBuiltinClient := effectiveCfg.ClientID == geminicli.GeminiCLIOAuthClientID
+	isBuiltinClient := geminicli.IsBuiltinOAuthClient(effectiveCfg.ClientID)
 
 	// AI Studio OAuth requires a user-provided OAuth client (built-in Gemini CLI client is scope-restricted).
 	if oauthType == "ai_studio" && isBuiltinClient {
@@ -485,14 +485,15 @@ func (s *GeminiOAuthService) ExchangeCode(ctx context.Context, input *GeminiExch
 		if err != nil {
 			return nil, err
 		}
-		isBuiltinClient := effectiveCfg.ClientID == geminicli.GeminiCLIOAuthClientID
+		isBuiltinClient := geminicli.IsBuiltinOAuthClient(effectiveCfg.ClientID)
 		if isBuiltinClient {
 			return nil, fmt.Errorf("AI Studio OAuth requires a custom OAuth Client. Please use an AI Studio API Key account, or configure GEMINI_OAUTH_CLIENT_ID / GEMINI_OAUTH_CLIENT_SECRET and re-authorize")
 		}
 	}
 
-	// code_assist/google_one always uses the built-in client and its fixed redirect URI.
-	if oauthType == "code_assist" || oauthType == "google_one" {
+	// Code Assist uses the built-in client's fixed redirect URI. Google One uses
+	// the session redirect URI when a custom client is configured.
+	if oauthType == "code_assist" {
 		redirectURI = geminicli.GeminiCLIRedirectURI
 	}
 

@@ -32,15 +32,15 @@ func (c *geminiOAuthClient) ExchangeCode(ctx context.Context, oauthType, code, c
 	}
 
 	// Use different OAuth clients based on oauthType:
-	// - code_assist: always use built-in Gemini CLI OAuth client (public)
-	// - google_one: always use built-in Gemini CLI OAuth client (public)
+	// - code_assist: always use the built-in Gemini CLI OAuth client
+	// - google_one: use the configured client, falling back to the built-in client
 	// - ai_studio: requires a user-provided OAuth client
 	oauthCfgInput := geminicli.OAuthConfig{
 		ClientID:     c.cfg.Gemini.OAuth.ClientID,
 		ClientSecret: c.cfg.Gemini.OAuth.ClientSecret,
 		Scopes:       c.cfg.Gemini.OAuth.Scopes,
 	}
-	if oauthType == "code_assist" || oauthType == "google_one" {
+	if oauthType == "code_assist" {
 		// Force use of built-in Gemini CLI OAuth client
 		oauthCfgInput.ClientID = ""
 		oauthCfgInput.ClientSecret = ""
@@ -85,7 +85,7 @@ func (c *geminiOAuthClient) RefreshToken(ctx context.Context, oauthType, refresh
 		ClientSecret: c.cfg.Gemini.OAuth.ClientSecret,
 		Scopes:       c.cfg.Gemini.OAuth.Scopes,
 	}
-	if oauthType == "code_assist" || oauthType == "google_one" {
+	if oauthType == "code_assist" {
 		// Force use of built-in Gemini CLI OAuth client
 		oauthCfgInput.ClientID = ""
 		oauthCfgInput.ClientSecret = ""

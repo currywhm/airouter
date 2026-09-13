@@ -261,8 +261,8 @@ docker compose down -v
 | `ADMIN_PASSWORD` | No | *(auto-generated)* | Admin password |
 | `TZ` | No | `Asia/Shanghai` | Timezone |
 | `UPDATE_GITHUB_TOKEN` | No | *(empty)* | Token for `api.github.com` release checks only; asset downloads remain anonymous. |
-| `GEMINI_OAUTH_CLIENT_ID` | No | *(builtin)* | Google OAuth client ID (Gemini OAuth). Leave empty to use the built-in Gemini CLI client. |
-| `GEMINI_OAUTH_CLIENT_SECRET` | No | *(builtin)* | Google OAuth client secret (Gemini OAuth). Leave empty to use the built-in Gemini CLI client. |
+| `GEMINI_OAUTH_CLIENT_ID` | No | *(empty)* | Custom Google OAuth client ID for Google One / AI Studio. |
+| `GEMINI_OAUTH_CLIENT_SECRET` | No | *(empty)* | Custom Google OAuth client secret for Google One / AI Studio. |
 | `GEMINI_OAUTH_SCOPES` | No | *(default)* | OAuth scopes (Gemini OAuth) |
 | `GEMINI_QUOTA_POLICY` | No | *(empty)* | JSON overrides for Gemini local quota simulation (Code Assist only). |
 
@@ -296,18 +296,20 @@ Your entire deployment (configuration + data) is migrated!
 
 ## Gemini OAuth Configuration
 
-Sub2API supports three methods to connect to Gemini:
+Sub2API supports four methods to connect to Gemini:
 
 ### Method 1: Code Assist OAuth (Recommended for GCP Users)
 
-**No configuration needed** - always uses the built-in Gemini CLI OAuth client (public).
+Uses the Gemini CLI OAuth client by default. Code Assist requires a GCP project.
+Google One can use the configured custom OAuth client without a GCP project.
 
 1. Leave `GEMINI_OAUTH_CLIENT_ID` and `GEMINI_OAUTH_CLIENT_SECRET` empty
 2. In the Admin UI, create a Gemini OAuth account and select **"Code Assist"** type
 3. Complete the OAuth flow in your browser
 
-> Note: Even if you configure `GEMINI_OAUTH_CLIENT_ID` / `GEMINI_OAUTH_CLIENT_SECRET` for AI Studio OAuth,
-> Code Assist OAuth will still use the built-in Gemini CLI client.
+> Note: Code Assist OAuth always uses the Gemini CLI client. Google One uses the configured
+> `GEMINI_OAUTH_CLIENT_ID` / `GEMINI_OAUTH_CLIENT_SECRET` when both are set, and otherwise
+> falls back to the Gemini CLI client.
 
 **Requirements:**
 - Google account with access to Google Cloud Platform
@@ -319,7 +321,13 @@ Sub2API supports three methods to connect to Gemini:
 3. Copy the Project ID (not the project name) from the list
 4. Common formats: `my-project-123456` or `cloud-ai-companion-xxxxx`
 
-### Method 2: AI Studio OAuth (For Regular Google Accounts)
+### Method 2: Google One OAuth with a Custom Client (For Regular Google Accounts)
+
+Set `GEMINI_OAUTH_CLIENT_ID` and `GEMINI_OAUTH_CLIENT_SECRET`, then create a Gemini OAuth
+account and select **"Google One"**. The browser callback uses
+`http://localhost:1455/auth/callback`, so that exact URI must be registered in the OAuth client.
+
+### Method 3: AI Studio OAuth (For AI Studio Accounts)
 
 Requires your own OAuth client credentials.
 
@@ -360,7 +368,7 @@ Requires your own OAuth client credentials.
 GEMINI_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
 
-# 可选：如需使用 Gemini CLI 内置 OAuth Client（Code Assist / Google One）
+# 可选：如需使用 Gemini CLI 内置 OAuth Client（Code Assist，或 Google One 的回退模式）
 # 安全说明：本仓库不会内置该 client_secret，请在运行环境通过环境变量注入。
 # GEMINI_CLI_OAUTH_CLIENT_SECRET=GOCSPX-your-built-in-secret
 ```
@@ -372,7 +380,7 @@ GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
    - After consent, your browser will be redirected to `http://localhost:1455/auth/callback?code=...&state=...`
    - Copy the full callback URL (recommended) or just the `code` and paste it back into the Admin UI
 
-### Method 3: API Key (Simplest)
+### Method 4: API Key (Simplest)
 
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Click "Create API key"
@@ -381,10 +389,10 @@ GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
 
 ### Comparison Table
 
-| Feature | Code Assist OAuth | AI Studio OAuth | API Key |
-|---------|-------------------|-----------------|---------|
-| Setup Complexity | Easy (no config) | Medium (OAuth client) | Easy |
-| GCP Project Required | Yes | No | No |
+| Feature | Code Assist OAuth | Google One OAuth | AI Studio OAuth | API Key |
+|---------|-------------------|------------------|-----------------|---------|
+| Setup Complexity | Easy (CLI client) | Medium (OAuth client) | Medium (OAuth client) | Easy |
+| GCP Project Required | Yes | No | No | No |
 | Custom OAuth Client | No (built-in) | Yes (required) | N/A |
 | Rate Limits | GCP quota | Standard | Standard |
 | Best For | GCP developers | Regular users needing OAuth | Quick testing |

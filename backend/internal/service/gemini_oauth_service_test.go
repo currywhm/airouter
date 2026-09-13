@@ -23,6 +23,7 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 	// NOTE: This test sets process env; it must not run in parallel.
 	// The built-in Gemini CLI client secret is not embedded in this repository.
 	// Tests set a dummy secret via env to simulate operator-provided configuration.
+	t.Setenv(geminicli.GeminiCLIOAuthClientIDEnv, "builtin-client-id")
 	t.Setenv(geminicli.GeminiCLIOAuthClientSecretEnv, "test-built-in-secret")
 
 	type testCase struct {
@@ -46,13 +47,13 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 				},
 			},
 			oauthType:     "google_one",
-			wantClientID:  geminicli.GeminiCLIOAuthClientID,
+			wantClientID:  "builtin-client-id",
 			wantRedirect:  geminicli.GeminiCLIRedirectURI,
 			wantScope:     geminicli.DefaultCodeAssistScopes,
 			wantProjectID: "",
 		},
 		{
-			name: "google_one always forces built-in client even when custom client configured",
+			name: "google_one uses custom client when configured",
 			cfg: &config.Config{
 				Gemini: config.GeminiConfig{
 					OAuth: config.GeminiOAuthConfig{
@@ -62,8 +63,8 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 				},
 			},
 			oauthType:     "google_one",
-			wantClientID:  geminicli.GeminiCLIOAuthClientID,
-			wantRedirect:  geminicli.GeminiCLIRedirectURI,
+			wantClientID:  "custom-client-id",
+			wantRedirect:  geminicli.AIStudioOAuthRedirectURI,
 			wantScope:     geminicli.DefaultCodeAssistScopes,
 			wantProjectID: "",
 		},
@@ -79,7 +80,7 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 			},
 			oauthType:     "code_assist",
 			projectID:     "my-gcp-project",
-			wantClientID:  geminicli.GeminiCLIOAuthClientID,
+			wantClientID:  "builtin-client-id",
 			wantRedirect:  geminicli.GeminiCLIRedirectURI,
 			wantScope:     geminicli.DefaultCodeAssistScopes,
 			wantProjectID: "my-gcp-project",
@@ -99,7 +100,6 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
 			svc := NewGeminiOAuthService(nil, nil, nil, nil, tt.cfg)
 			got, err := svc.GenerateAuthURL(context.Background(), nil, "https://example.com/auth/callback", tt.projectID, tt.oauthType, "")
