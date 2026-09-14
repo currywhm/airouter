@@ -87,6 +87,36 @@
                 <p v-if="checkinStatus?.claimed" class="mt-4 text-xs text-gray-500 dark:text-dark-400">{{ t('wallet.checkin.claimedHint') }}</p>
               </section>
             </div>
+            <div v-if="affiliateDetail" class="card p-5">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.inviteRewards.title') }}</p>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.inviteRewards.hint') }}</p>
+                </div>
+                <router-link to="/affiliate" class="btn btn-secondary btn-sm">{{ t('wallet.inviteRewards.manage') }}</router-link>
+              </div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-lg bg-gray-50 px-3 py-3 dark:bg-dark-800">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.inviteRewards.invited') }}</p>
+                  <p class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{{ affiliateDetail.aff_count }}</p>
+                </div>
+                <div class="rounded-lg bg-gray-50 px-3 py-3 dark:bg-dark-800">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.inviteRewards.total') }}</p>
+                  <p class="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(affiliateDetail.aff_history_quota) }}</p>
+                </div>
+                <div class="rounded-lg bg-gray-50 px-3 py-3 dark:bg-dark-800">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.inviteRewards.pending') }}</p>
+                  <p class="mt-1 text-xl font-semibold text-amber-600 dark:text-amber-400">{{ formatCurrency(affiliateDetail.aff_quota + affiliateDetail.aff_frozen_quota) }}</p>
+                </div>
+              </div>
+              <div v-if="affiliateDetail.invitees.length" class="mt-4 border-t border-gray-100 pt-4 dark:border-dark-700">
+                <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('wallet.inviteRewards.recent') }}</p>
+                <div v-for="item in affiliateDetail.invitees.slice(0, 5)" :key="item.user_id" class="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <span class="truncate text-gray-600 dark:text-gray-400">{{ item.email || item.username || '-' }}</span>
+                  <span class="shrink-0 font-medium text-emerald-600 dark:text-emerald-400">{{ formatCurrency(item.total_rebate) }}</span>
+                </div>
+              </div>
+            </div>
             <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
               <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
             </div>
@@ -313,11 +343,13 @@ import { usePaymentStore } from '@/stores/payment'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores'
 import userAPI, { type DailyCheckinStatus } from '@/api/user'
+import { formatCurrency } from '@/utils/format'
 import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel, type PeakRateFields } from '@/utils/peak-rate'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
+import type { UserAffiliateDetail } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
@@ -354,6 +386,7 @@ const appStore = useAppStore()
 
 const user = computed(() => authStore.user)
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
+const affiliateDetail = ref<UserAffiliateDetail | null>(null)
 const checkinStatus = ref<DailyCheckinStatus | null>(null)
 const checkinLoading = ref(false)
 
@@ -1174,6 +1207,11 @@ async function resumeWechatPaymentFromQuery() {
 }
 
 onMounted(async () => {
+  void userAPI.getAffiliateDetail().then((detail) => {
+    affiliateDetail.value = detail
+  }).catch(() => {
+    affiliateDetail.value = null
+  })
   void loadCheckinStatus()
   try {
     const res = await paymentAPI.getCheckoutInfo()

@@ -23,7 +23,8 @@ var (
 )
 
 const (
-	affiliateInviteesLimit = 100
+	affiliateInviteesLimit      = 100
+	AffiliateSignupRewardAmount = 5.0
 	// AffiliateCodeMinLength / AffiliateCodeMaxLength bound both system-generated
 	// 12-char codes and admin-customized codes (e.g. "VIP2026").
 	AffiliateCodeMinLength = 4
@@ -101,6 +102,7 @@ type AffiliateRepository interface {
 	EnsureUserAffiliate(ctx context.Context, userID int64) (*AffiliateSummary, error)
 	GetAffiliateByCode(ctx context.Context, code string) (*AffiliateSummary, error)
 	BindInviter(ctx context.Context, userID, inviterID int64) (bool, error)
+	GrantSignupReward(ctx context.Context, inviteeUserID int64, amount float64) (int64, bool, error)
 	AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error)
 	GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error)
 	ThawFrozenQuota(ctx context.Context, userID int64) (float64, error)
@@ -331,6 +333,27 @@ func (s *AffiliateService) BindInviterByCode(ctx context.Context, userID int64, 
 
 func (s *AffiliateService) AccrueInviteRebate(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64) (float64, error) {
 	return s.AccrueInviteRebateForOrder(ctx, inviteeUserID, baseRechargeAmount, nil)
+}
+
+// GrantSignupReward credits the inviter's wallet once the invitee has
+// completed registration and received a login token. The repository performs
+// the balance update and ledger insert in one transaction and enforces
+// idempotency at the database layer.
+func (s *AffiliateService) GrantSignupReward(ctx context.Context, inviteeUserID int64, amount float64) (int64, bool, error) {
+	if s == nil || s.repo == nil || inviteeUserID <= 0 || amount <= 0 {
+		return 0, false, nil
+	}
+	if !s.IsEnabled(ctx) {
+		return 0, false, nil
+	}
+	inviterID, applied, err := s.repo.GrantSignupReward(ctx, inviteeUserID, amount)
+	if err != nil {
+		return 0, false, err
+	}
+	if applied {
+		s.invalidateAffiliateCaches(ctx, inviterID)
+	}
+	return inviterID, applied, nil
 }
 
 func (s *AffiliateService) AccrueInviteRebateForOrder(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64, sourceOrderID *int64) (float64, error) {

@@ -62,7 +62,7 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: 'Wallet',
-    description: 'Top up your balance and review your account balance',
+    description: 'Recharge your balance and track invite rewards',
     openInNewTab: 'Open in new tab',
     notEnabledTitle: 'Feature not enabled',
     notEnabledDesc: 'The administrator has not enabled wallet recharge. Please contact admin.',
@@ -88,6 +88,15 @@ export default {
       balanceUpdated: 'Reward added to wallet',
       loadFailed: 'Failed to load check-in status',
       claimFailed: 'Check-in failed. Please try again.'
+    },
+    inviteRewards: {
+      title: 'Invite rewards',
+      hint: 'When an invitee registers and logs in, the inviter automatically receives $5 in the wallet.',
+      manage: 'Open invite center',
+      invited: 'Successful invites',
+      total: 'Total rewards',
+      pending: 'Available to transfer',
+      recent: 'Recent invites'
     }
   },
 

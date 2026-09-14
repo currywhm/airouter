@@ -670,7 +670,7 @@ export default {
 
   affiliate: {
     title: 'Affiliate Rebates',
-    description: 'Invite friends to top up and earn rebates at your current rate',
+    description: 'Invite new users and receive a $5 reward after they register and log in',
     yourCode: 'Your Affiliate Code',
     inviteLink: 'Invite Link',
     copyCode: 'Copy Code',

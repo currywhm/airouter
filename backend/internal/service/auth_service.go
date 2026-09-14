@@ -295,6 +295,11 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	if err != nil {
 		return "", nil, fmt.Errorf("generate token: %w", err)
 	}
+	if s.affiliateService != nil {
+		if _, _, err := s.affiliateService.GrantSignupReward(ctx, user.ID, AffiliateSignupRewardAmount); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to grant affiliate signup reward for user %d: %v", user.ID, err)
+		}
+	}
 
 	return token, user, nil
 }
@@ -854,6 +859,11 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 	tokenPair, err := s.GenerateTokenPair(ctx, user, "")
 	if err != nil {
 		return nil, nil, fmt.Errorf("generate token pair: %w", err)
+	}
+	if created && s.affiliateService != nil {
+		if _, _, err := s.affiliateService.GrantSignupReward(ctx, user.ID, AffiliateSignupRewardAmount); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to grant affiliate signup reward for oauth user %d: %v", user.ID, err)
+		}
 	}
 	return tokenPair, user, nil
 }
