@@ -61,7 +61,7 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: '钱包',
-    description: '充值余额并查看邀请奖励',
+    description: '充值余额并查看账户余额',
     openInNewTab: '新窗口打开',
     notEnabledTitle: '该功能未开启',
     notEnabledDesc: '管理员暂未开启钱包充值入口，请联系管理员。',
@@ -86,15 +86,6 @@ export default {
       balanceUpdated: '奖励已到账',
       loadFailed: '签到状态加载失败',
       claimFailed: '签到失败，请稍后重试'
-    },
-    inviteRewards: {
-      title: '邀请奖励',
-      hint: '被邀请用户完成注册并登录后，邀请人自动获得 $3，奖励直接进入钱包。',
-      manage: '查看邀请中心',
-      invited: '成功邀请',
-      total: '累计奖励',
-      pending: '可转额度',
-      recent: '最近邀请记录'
     }
   },
 

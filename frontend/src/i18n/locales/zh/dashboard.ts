@@ -674,7 +674,7 @@ export default {
 
   affiliate: {
     title: '邀请返利',
-    description: '邀请新用户注册并登录，奖励自动进入钱包',
+    description: '邀请好友充值，按当前返利比例获得返利',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',

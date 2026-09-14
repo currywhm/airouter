@@ -90,19 +90,11 @@ describe('RegisterView invitation layout', () => {
     registerMock.mockResolvedValue({})
   })
 
-  it('keeps the optional affiliate invitation field before Turnstile', async () => {
+  it('does not render an affiliate invitation field', async () => {
     const wrapper = mountRegister()
     await flushPromises()
 
-    const invitationField = wrapper.get('[data-testid="affiliate-invitation-field"]')
-    const turnstile = wrapper.get('[data-testid="registration-turnstile"]')
-
-    expect(invitationField.get('input').attributes('id')).toBe('affiliate_code')
-    expect(invitationField.text()).toContain('common.optional')
-    expect(
-      invitationField.element.compareDocumentPosition(turnstile.element) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy()
+    expect(wrapper.find('[data-testid="affiliate-invitation-field"]').exists()).toBe(false)
   })
 
   it('uses the mandatory invitation field without duplicating the affiliate field', async () => {

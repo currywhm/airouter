@@ -38,7 +38,7 @@ JOIN users u ON u.id = ua.user_id
 LEFT JOIN (
     SELECT user_id, COUNT(DISTINCT source_user_id)::integer AS rebated_invitee_count
     FROM user_affiliate_ledger
-    WHERE action IN ('accrue', 'signup_reward') AND source_user_id IS NOT NULL
+    WHERE action = 'accrue' AND source_user_id IS NOT NULL
     GROUP BY user_id
 ) rebated ON rebated.user_id = ua.user_id
 LEFT JOIN (
@@ -215,75 +215,6 @@ WHERE dc.user_id = $1 AND dc.checkin_date = $2::date AND u.deleted_at IS NULL`, 
 		return nil, fmt.Errorf("scan daily check-in result: %w", err)
 	}
 	return status, nil
-}
-
-// GrantSignupReward adds a one-time signup reward directly to the inviter's
-// wallet. The ledger insert is the idempotency key and shares the same
-// transaction as the balance update.
-func (r *affiliateRepository) GrantSignupReward(ctx context.Context, inviteeUserID int64, amount float64) (int64, bool, error) {
-	if inviteeUserID <= 0 || amount <= 0 {
-		return 0, false, nil
-	}
-
-	var inviterID int64
-	var applied bool
-	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
-		summary, err := ensureUserAffiliateWithClient(txCtx, txClient, inviteeUserID)
-		if err != nil {
-			return err
-		}
-		if summary.InviterID == nil || *summary.InviterID <= 0 {
-			return nil
-		}
-		inviterID = *summary.InviterID
-
-		rows, err := txClient.QueryContext(txCtx, `
-INSERT INTO user_affiliate_ledger (user_id, action, amount, source_user_id, created_at, updated_at)
-VALUES ($1, 'signup_reward', $2, $3, NOW(), NOW())
-ON CONFLICT (source_user_id) WHERE action = 'signup_reward' AND source_user_id IS NOT NULL DO NOTHING
-RETURNING id`, inviterID, amount, inviteeUserID)
-		if err != nil {
-			return fmt.Errorf("insert affiliate signup reward ledger: %w", err)
-		}
-		inserted := rows.Next()
-		if err := rows.Err(); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		if err := rows.Close(); err != nil {
-			return err
-		}
-		if !inserted {
-			return nil
-		}
-
-		result, err := txClient.ExecContext(txCtx, `
-UPDATE users
-SET balance = balance + $1,
-    updated_at = NOW()
-WHERE id = $2`, amount, inviterID)
-		if err != nil {
-			return fmt.Errorf("credit inviter wallet: %w", err)
-		}
-		affected, _ := result.RowsAffected()
-		if affected == 0 {
-			return service.ErrUserNotFound
-		}
-
-		if _, err := txClient.ExecContext(txCtx, `
-UPDATE user_affiliates
-SET aff_history_quota = aff_history_quota + $1,
-    updated_at = NOW()
-WHERE user_id = $2`, amount, inviterID); err != nil {
-			return fmt.Errorf("update affiliate signup reward history: %w", err)
-		}
-		applied = true
-		return nil
-	})
-	if err != nil {
-		return 0, false, err
-	}
-	return inviterID, applied, nil
 }
 
 func (r *affiliateRepository) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error) {
@@ -529,7 +460,7 @@ LEFT JOIN users u ON u.id = ua.user_id
 LEFT JOIN user_affiliate_ledger ual
        ON ual.user_id = $1
       AND ual.source_user_id = ua.user_id
-      AND ual.action IN ('accrue', 'signup_reward')
+      AND ual.action = 'accrue'
 WHERE ua.inviter_id = $1
 GROUP BY ua.user_id, u.email, u.username, ua.created_at
 ORDER BY ua.created_at DESC
