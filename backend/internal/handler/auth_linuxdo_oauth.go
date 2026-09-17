@@ -327,14 +327,17 @@ func (h *AuthHandler) LinuxDoOAuthCallback(c *gin.Context) {
 		redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
 		return
 	}
-	emailVerificationRequired := h != nil && h.authService != nil && h.authService.IsEmailVerifyEnabled(c.Request.Context())
 	forceEmailOnSignup := h.isForceEmailOnThirdPartySignup(c.Request.Context())
+
+	// LinuxDo 已通过第三方身份完成账号校验，邮箱验证只约束邮箱/密码注册，
+	// 不应再要求 LinuxDo 用户补录邮箱和邮箱验证码。
+	emailVerificationRequired := false
 	if compatEmailUser == nil && !emailVerificationRequired && !forceEmailOnSignup {
 		if err := h.ensureBackendModeAllowsNewUserLogin(c.Request.Context()); err != nil {
 			redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
 			return
 		}
-		tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCode(
+		tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext(
 			c.Request.Context(),
 			email,
 			username,
@@ -342,6 +345,7 @@ func (h *AuthHandler) LinuxDoOAuthCallback(c *gin.Context) {
 			"",
 			readOAuthPromoCode(c),
 			"linuxdo",
+			registrationRiskContextFromGin(c),
 		)
 		if err == nil {
 			if err := applyPendingOAuthBinding(
@@ -549,7 +553,7 @@ func (h *AuthHandler) CompleteLinuxDoOAuthRegistration(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session); err != nil {
+	if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session, false); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	} else if handled {
@@ -587,7 +591,7 @@ func (h *AuthHandler) CompleteLinuxDoOAuthRegistration(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCode(
+	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext(
 		c.Request.Context(),
 		email,
 		username,
@@ -595,6 +599,7 @@ func (h *AuthHandler) CompleteLinuxDoOAuthRegistration(c *gin.Context) {
 		req.AffCode,
 		pendingOAuthPromoCode(session),
 		"linuxdo",
+		registrationRiskContextFromGin(c),
 	)
 	if err != nil {
 		response.ErrorFrom(c, err)

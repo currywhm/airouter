@@ -172,8 +172,32 @@ export async function login2FA(request: TotpLogin2FARequest): Promise<AuthRespon
  * @param userData - Registration data (username, email, password)
  * @returns Authentication response with token and user data
  */
+const REGISTRATION_FINGERPRINT_KEY = 'airouter_registration_fingerprint'
+
+function getRegistrationFingerprint(): string {
+  try {
+    const existing = localStorage.getItem(REGISTRATION_FINGERPRINT_KEY)
+    if (existing) return existing
+    const bytes = new Uint8Array(16)
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      crypto.getRandomValues(bytes)
+    } else {
+      for (let i = 0; i < bytes.length; i += 1) {
+        bytes[i] = Math.floor(Math.random() * 256)
+      }
+    }
+    const fingerprint = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    localStorage.setItem(REGISTRATION_FINGERPRINT_KEY, fingerprint)
+    return fingerprint
+  } catch {
+    return `registration-client-fingerprint-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  }
+}
+
 export async function register(userData: RegisterRequest): Promise<AuthResponse> {
-  const { data } = await apiClient.post<AuthResponse>('/auth/register', userData)
+  const { data } = await apiClient.post<AuthResponse>('/auth/register', userData, {
+    headers: { 'X-Client-Fingerprint': getRegistrationFingerprint() }
+  })
 
   // Store token and user data
   setAuthToken(data.access_token)

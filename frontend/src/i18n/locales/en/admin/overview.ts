@@ -455,6 +455,14 @@ export default {
         success: 'Updated limits for {count} users',
         failed: 'Failed to update user limits'
       },
+      batchDelete: {
+        action: 'Delete selected ({count})',
+        title: 'Delete Users in Bulk',
+        confirm: 'Delete the {count} selected users? Admin accounts will be skipped. This action cannot be undone.',
+        success: 'Deleted {count} users',
+        partial: 'Deleted {deleted} users; {failed} could not be deleted',
+        failed: 'Failed to delete selected users'
+      },
       editUser: 'Edit User',
       deleteUser: 'Delete User',
       deleteConfirmMessage: "Are you sure you want to delete user '{email}'? This action cannot be undone.",

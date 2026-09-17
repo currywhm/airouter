@@ -272,6 +272,27 @@
 
       </form>
 
+      <BaseDialog
+        :show="showAbuseWarning"
+        :title="t('auth.registrationAbuseBlockedTitle')"
+        width="narrow"
+        @close="showAbuseWarning = false"
+      >
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
+            <Icon name="exclamationCircle" size="md" class="text-red-600 dark:text-red-400" />
+          </div>
+          <p class="pt-1 text-sm leading-6 text-gray-700 dark:text-dark-300">
+            {{ t('auth.registrationAbuseBlocked') }}
+          </p>
+        </div>
+        <template #footer>
+          <button type="button" class="btn btn-primary" @click="showAbuseWarning = false">
+            {{ t('auth.registrationAbuseBlockedConfirm') }}
+          </button>
+        </template>
+      </BaseDialog>
+
       <div v-if="showOAuthLogin" class="space-y-3 pt-1">
         <div class="flex items-center gap-3">
           <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
@@ -312,6 +333,7 @@ import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -383,6 +405,7 @@ const loginAgreementRevision = ref<string>('')
 const loginAgreementDocuments = ref<LoginAgreementDocument[]>([])
 const agreementAccepted = ref<boolean>(false)
 const showAgreementModal = ref<boolean>(false)
+const showAbuseWarning = ref<boolean>(false)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -1000,6 +1023,11 @@ async function handleRegister(): Promise<void> {
     await router.push('/dashboard')
   } catch (error: unknown) {
     // Handle registration error
+    if (extractApiErrorCode(error) === 'REGISTRATION_ABUSE_BLOCKED') {
+      errorMessage.value = t('auth.registrationAbuseBlocked')
+      showAbuseWarning.value = true
+      return
+    }
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.registrationFailed'))
 
     // Also show error toast

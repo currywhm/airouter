@@ -164,6 +164,27 @@ export async function deleteUser(id: number): Promise<{ message: string }> {
 }
 
 /**
+ * Delete multiple users
+ * @param ids - User IDs
+ * @returns Per-user deletion result
+ */
+export interface BatchDeleteUsersResponse {
+  total: number
+  deleted: number
+  failed: number
+  deleted_ids: number[]
+  failed_ids: number[]
+  errors: Array<{ user_id: number; error: string }>
+}
+
+export async function batchDelete(ids: number[]): Promise<BatchDeleteUsersResponse> {
+  const { data } = await apiClient.post<BatchDeleteUsersResponse>('/admin/users/batch-delete', {
+    user_ids: ids
+  })
+  return data
+}
+
+/**
  * Update user balance
  * @param id - User ID
  * @param balance - New balance
@@ -405,6 +426,7 @@ export const usersAPI = {
   create,
   update,
   delete: deleteUser,
+  batchDelete,
   updateBalance,
   updateConcurrency,
   batchUpdateLimits,

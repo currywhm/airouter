@@ -385,6 +385,56 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "User deleted successfully"})
 }
 
+// BatchDelete handles deleting multiple users.
+// POST /api/v1/admin/users/batch-delete
+type BatchDeleteUsersRequest struct {
+	UserIDs []int64 `json:"user_ids"`
+}
+
+func (h *UserHandler) BatchDelete(c *gin.Context) {
+	var req BatchDeleteUsersRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	userIDs := normalizeInt64IDList(req.UserIDs)
+	if len(userIDs) == 0 {
+		response.BadRequest(c, "user_ids is required")
+		return
+	}
+	if len(userIDs) > 500 {
+		response.BadRequest(c, "user_ids cannot exceed 500")
+		return
+	}
+
+	type deleteError struct {
+		UserID int64  `json:"user_id"`
+		Error  string `json:"error"`
+	}
+
+	deletedIDs := make([]int64, 0, len(userIDs))
+	failedIDs := make([]int64, 0)
+	errorsByUser := make([]deleteError, 0)
+	for _, userID := range userIDs {
+		if err := h.adminService.DeleteUser(c.Request.Context(), userID); err != nil {
+			failedIDs = append(failedIDs, userID)
+			errorsByUser = append(errorsByUser, deleteError{UserID: userID, Error: err.Error()})
+			continue
+		}
+		deletedIDs = append(deletedIDs, userID)
+	}
+
+	response.Success(c, gin.H{
+		"total":       len(userIDs),
+		"deleted":     len(deletedIDs),
+		"failed":      len(failedIDs),
+		"deleted_ids": deletedIDs,
+		"failed_ids":  failedIDs,
+		"errors":      errorsByUser,
+	})
+}
+
 // UpdateBalance handles updating user balance
 // POST /api/v1/admin/users/:id/balance
 func (h *UserHandler) UpdateBalance(c *gin.Context) {

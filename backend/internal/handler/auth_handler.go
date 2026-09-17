@@ -32,6 +32,16 @@ type AuthHandler struct {
 	dingTalkClientMu       sync.Mutex
 }
 
+func registrationRiskContextFromGin(c *gin.Context) service.RegistrationRiskContext {
+	if c == nil {
+		return service.RegistrationRiskContext{}
+	}
+	return service.RegistrationRiskContext{
+		ClientIP:    ip.GetClientIP(c),
+		Fingerprint: c.GetHeader("X-Client-Fingerprint"),
+	}
+}
+
 // NewAuthHandler creates a new AuthHandler
 func NewAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService) *AuthHandler {
 	return &AuthHandler{
@@ -190,7 +200,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	_, user, err := h.authService.RegisterWithVerification(
+	_, user, err := h.authService.RegisterWithVerificationContext(
 		c.Request.Context(),
 		req.Email,
 		req.Password,
@@ -198,6 +208,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		req.PromoCode,
 		req.InvitationCode,
 		req.AffCode,
+		service.RegistrationRiskContext{
+			ClientIP:    ip.GetClientIP(c),
+			Fingerprint: c.GetHeader("X-Client-Fingerprint"),
+		},
 	)
 	if err != nil {
 		response.ErrorFrom(c, err)

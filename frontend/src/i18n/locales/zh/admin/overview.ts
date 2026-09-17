@@ -455,6 +455,14 @@ export default {
         success: '已更新 {count} 个用户的限制',
         failed: '批量更新用户限制失败'
       },
+      batchDelete: {
+        action: '批量删除（{count}）',
+        title: '批量删除用户',
+        confirm: '确定要删除已选择的 {count} 个用户吗？管理员账号会被跳过，此操作无法撤销。',
+        success: '已删除 {count} 个用户',
+        partial: '已删除 {deleted} 个用户，{failed} 个未能删除',
+        failed: '批量删除用户失败'
+      },
       editUser: '编辑用户',
       deleteUser: '删除用户',
       deleteConfirmMessage: "确定要删除用户 '{email}' 吗？此操作无法撤销。",

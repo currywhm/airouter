@@ -532,7 +532,7 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session); err != nil {
+	if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session, true); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	} else if handled {
@@ -553,7 +553,7 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		return
 	}
 
-	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCode(
+	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext(
 		c.Request.Context(),
 		email,
 		username,
@@ -561,6 +561,7 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		req.AffCode,
 		pendingOAuthPromoCode(session),
 		"wechat",
+		registrationRiskContextFromGin(c),
 	)
 	if err != nil {
 		response.ErrorFrom(c, err)

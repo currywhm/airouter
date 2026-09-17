@@ -83,6 +83,21 @@ type defaultSubscriptionAssignerStub struct {
 
 type refreshTokenCacheStub struct{}
 
+type registrationAbuseGuardStub struct {
+	input    RegistrationAbuseEventInput
+	decision *RegistrationAbuseDecision
+	err      error
+}
+
+func (s *registrationAbuseGuardStub) ProcessSuccessfulRegistration(_ context.Context, input RegistrationAbuseEventInput) (*RegistrationAbuseDecision, error) {
+	s.input = input
+	return s.decision, s.err
+}
+
+func (s *registrationAbuseGuardStub) CleanupRejectedRegistration(_ context.Context, _ int64) error {
+	return nil
+}
+
 type userPlatformQuotaRepoStub struct {
 	bulkInsertCalls [][]UserPlatformQuotaRecord
 	bulkInsertErr   error
@@ -627,6 +642,61 @@ func TestAuthService_Register_Success(t *testing.T) {
 	require.Equal(t, 2, user.Concurrency)
 	require.Len(t, repo.created, 1)
 	require.True(t, user.CheckPassword("password"))
+}
+
+func TestAuthService_Register_AbuseGuardBlocksBeforeTokenIssuance(t *testing.T) {
+	repo := &userRepoStub{nextID: 19}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+	}, nil, nil)
+	guard := &registrationAbuseGuardStub{
+		decision: &RegistrationAbuseDecision{Blocked: true, Signals: []string{"ip_burst_10m"}},
+	}
+	service.SetRegistrationAbuseService(guard)
+
+	token, user, err := service.RegisterWithVerificationContext(
+		context.Background(),
+		"blocked@test.com",
+		"password",
+		"", "", "", "",
+		RegistrationRiskContext{ClientIP: "203.0.113.9", Fingerprint: "fingerprint-123"},
+	)
+
+	require.ErrorIs(t, err, ErrRegistrationAbuseBlocked)
+	require.Empty(t, token)
+	require.Nil(t, user)
+	require.Equal(t, int64(19), guard.input.UserID)
+	require.Equal(t, "203.0.113.9", guard.input.ClientIP)
+	require.Equal(t, "fingerprint-123", guard.input.Fingerprint)
+}
+
+func TestAuthService_OAuthRegister_AbuseGuardBlocksBeforeTokenIssuance(t *testing.T) {
+	repo := &userRepoStub{nextID: 20}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+	}, nil, nil)
+	service.refreshTokenCache = &refreshTokenCacheStub{}
+	guard := &registrationAbuseGuardStub{
+		decision: &RegistrationAbuseDecision{Blocked: true, Signals: []string{"inviter_burst_10m"}},
+	}
+	service.SetRegistrationAbuseService(guard)
+
+	tokenPair, user, err := service.LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext(
+		context.Background(),
+		"oauth-blocked@test.com",
+		"oauth-blocked",
+		"",
+		"",
+		"",
+		"oidc",
+		RegistrationRiskContext{ClientIP: "203.0.113.10"},
+	)
+
+	require.ErrorIs(t, err, ErrRegistrationAbuseBlocked)
+	require.Nil(t, tokenPair)
+	require.Nil(t, user)
+	require.Equal(t, int64(20), guard.input.UserID)
+	require.Equal(t, "203.0.113.10", guard.input.ClientIP)
 }
 
 func TestAuthService_ValidateToken_ExpiredReturnsClaimsWithError(t *testing.T) {

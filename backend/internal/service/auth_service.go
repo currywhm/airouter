@@ -42,12 +42,16 @@ var (
 		"EMAIL_DOMAIN_REGISTRATION_LIMIT",
 		"this email domain cannot register another account; use a mainstream email or contact support to add the enterprise domain",
 	)
-	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
-	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
-	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
-	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
-	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
-	ErrCaptchaProviderConflict = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
+	ErrRegDisabled              = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
+	ErrServiceUnavailable       = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
+	ErrInvitationCodeRequired   = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
+	ErrInvitationCodeInvalid    = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
+	ErrOAuthInvitationRequired  = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
+	ErrCaptchaProviderConflict  = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
+	ErrRegistrationAbuseBlocked = infraerrors.Forbidden(
+		"REGISTRATION_ABUSE_BLOCKED",
+		"registration blocked by abuse protection",
+	)
 )
 
 // maxTokenLength 限制 token 大小，避免超长 header 触发解析时的异常内存分配。
@@ -84,8 +88,17 @@ type AuthService struct {
 	emailQueueService     *EmailQueueService
 	promoService          *PromoService
 	affiliateService      *AffiliateService
+	registrationAbuse     registrationAbuseGuard
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+}
+
+type registrationAbuseGuard interface {
+	ProcessSuccessfulRegistration(
+		ctx context.Context,
+		input RegistrationAbuseEventInput,
+	) (*RegistrationAbuseDecision, error)
+	CleanupRejectedRegistration(ctx context.Context, userID int64) error
 }
 
 type CaptchaProof struct {
@@ -154,6 +167,10 @@ func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptch
 	s.aliyunCaptchaService = aliyunCaptchaService
 }
 
+func (s *AuthService) SetRegistrationAbuseService(registrationAbuse registrationAbuseGuard) {
+	s.registrationAbuse = registrationAbuse
+}
+
 // Register 用户注册，返回token和用户
 func (s *AuthService) Register(ctx context.Context, email, password string) (string, *User, error) {
 	return s.RegisterWithVerification(ctx, email, password, "", "", "", "")
@@ -161,6 +178,16 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (str
 
 // RegisterWithVerification 用户注册（支持邮件验证、优惠码、邀请码和邀请返利码），返回token和用户。
 func (s *AuthService) RegisterWithVerification(ctx context.Context, email, password, verifyCode, promoCode, invitationCode, affiliateCode string) (string, *User, error) {
+	return s.RegisterWithVerificationContext(ctx, email, password, verifyCode, promoCode, invitationCode, affiliateCode, RegistrationRiskContext{})
+}
+
+// RegisterWithVerificationContext is the HTTP registration path with client
+// request signals attached for post-registration abuse cleanup.
+func (s *AuthService) RegisterWithVerificationContext(
+	ctx context.Context,
+	email, password, verifyCode, promoCode, invitationCode, affiliateCode string,
+	riskContext RegistrationRiskContext,
+) (string, *User, error) {
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return "", nil, ErrRegDisabled
@@ -275,6 +302,10 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 		}
 	}
 
+	if err := s.evaluateRegistrationAbuse(ctx, user, riskContext); err != nil {
+		return "", nil, err
+	}
+
 	// 邀请码占用已由 createUserAndClaimInvitation 在“用户创建 + 邀请码占用”的
 	// 同一个数据库事务内原子完成（一次性约束，见函数注释），此处不再单独标记。
 	// 应用优惠码（如果提供且功能已启用）
@@ -305,6 +336,49 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 }
 
 // SendVerifyCodeResult 发送验证码返回结果
+func (s *AuthService) evaluateRegistrationAbuse(
+	ctx context.Context,
+	user *User,
+	riskContext RegistrationRiskContext,
+) error {
+	if s == nil || user == nil || user.ID <= 0 || s.registrationAbuse == nil {
+		return nil
+	}
+
+	var inviterID *int64
+	if s.affiliateService != nil {
+		if summary, err := s.affiliateService.EnsureUserAffiliate(ctx, user.ID); err == nil && summary != nil {
+			inviterID = cloneRegistrationAbuseInt64(summary.InviterID)
+		}
+	}
+
+	riskContext = normalizeRegistrationRiskContext(riskContext)
+	decision, err := s.registrationAbuse.ProcessSuccessfulRegistration(ctx, RegistrationAbuseEventInput{
+		UserID:      user.ID,
+		Email:       user.Email,
+		ClientIP:    riskContext.ClientIP,
+		Fingerprint: riskContext.Fingerprint,
+		InviterID:   inviterID,
+	})
+	if err != nil {
+		logger.LegacyPrintf("service.auth", "[Auth] Failed to evaluate registration abuse signals for user %d: %v", user.ID, err)
+		if cleanupErr := s.registrationAbuse.CleanupRejectedRegistration(ctx, user.ID); cleanupErr != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to clean up user %d after registration abuse evaluation error: %v", user.ID, cleanupErr)
+		}
+		return ErrServiceUnavailable
+	}
+	if decision == nil || !decision.Blocked {
+		return nil
+	}
+
+	metadata := decision.Metadata()
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+	metadata["blocked_user_id"] = strconv.FormatInt(user.ID, 10)
+	return ErrRegistrationAbuseBlocked.WithMetadata(metadata)
+}
+
 type SendVerifyCodeResult struct {
 	Countdown int `json:"countdown"` // 倒计时秒数
 }
@@ -687,17 +761,37 @@ func (s *AuthService) canBypassRegistrationDisabledForOAuth(ctx context.Context,
 // affiliateCode 用于邀请返利绑定，仅在新用户注册时使用。
 // signupSource 标识来源渠道（"dingtalk"/"linuxdo"/"wechat"/"oidc" 等），仅用于豁免检查。
 func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, email, username, invitationCode, affiliateCode, signupSource string) (*TokenPair, *User, error) {
-	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, "", signupSource)
+	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, "", signupSource, RegistrationRiskContext{})
+}
+
+// LoginOrRegisterOAuthWithTokenPairAndContext carries request-level risk
+// signals for the first OAuth registration. Existing-user logins ignore them.
+func (s *AuthService) LoginOrRegisterOAuthWithTokenPairAndContext(
+	ctx context.Context,
+	email, username, invitationCode, affiliateCode, signupSource string,
+	riskContext RegistrationRiskContext,
+) (*TokenPair, *User, error) {
+	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, "", signupSource, riskContext)
 }
 
 // LoginOrRegisterOAuthWithTokenPairAndPromoCode behaves like
 // LoginOrRegisterOAuthWithTokenPair and applies promoCode only when a new user
 // is created.
 func (s *AuthService) LoginOrRegisterOAuthWithTokenPairAndPromoCode(ctx context.Context, email, username, invitationCode, affiliateCode, promoCode, signupSource string) (*TokenPair, *User, error) {
-	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, promoCode, signupSource)
+	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, promoCode, signupSource, RegistrationRiskContext{})
 }
 
-func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, email, username, invitationCode, affiliateCode, promoCode, signupSource string) (*TokenPair, *User, error) {
+// LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext is the HTTP OAuth
+// registration path with client request signals attached.
+func (s *AuthService) LoginOrRegisterOAuthWithTokenPairAndPromoCodeContext(
+	ctx context.Context,
+	email, username, invitationCode, affiliateCode, promoCode, signupSource string,
+	riskContext RegistrationRiskContext,
+) (*TokenPair, *User, error) {
+	return s.loginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, promoCode, signupSource, riskContext)
+}
+
+func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, email, username, invitationCode, affiliateCode, promoCode, signupSource string, riskContext RegistrationRiskContext) (*TokenPair, *User, error) {
 	// 检查 refreshTokenCache 是否可用
 	if s.refreshTokenCache == nil {
 		return nil, nil, errors.New("refresh token cache not configured")
@@ -854,6 +948,9 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 		}
 	}
 	if created {
+		if err := s.evaluateRegistrationAbuse(ctx, user, riskContext); err != nil {
+			return nil, nil, err
+		}
 		user = s.applyOAuthSignupPromoCode(ctx, user, promoCode)
 	}
 	tokenPair, err := s.GenerateTokenPair(ctx, user, "")

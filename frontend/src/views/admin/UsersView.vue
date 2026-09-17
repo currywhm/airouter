@@ -252,6 +252,16 @@
               {{ t('admin.users.bulkLimits.action', { count: selectedCount }) }}
             </button>
 
+            <button
+              v-if="selectedCount > 0"
+              class="btn btn-danger flex-1 md:flex-initial"
+              data-test="bulk-delete-users"
+              @click="showBatchDeleteDialog = true"
+            >
+              <Icon name="trash" size="md" class="mr-2" />
+              {{ t('admin.users.batchDelete.action', { count: selectedCount }) }}
+            </button>
+
             <!-- Create User Button (full width on mobile, auto width on desktop) -->
             <button @click="showCreateModal = true" class="btn btn-primary flex-1 md:flex-initial">
               <Icon name="plus" size="md" class="mr-2" />
@@ -748,6 +758,16 @@
     </Teleport>
 
     <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: deletingUser?.email })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
+    <ConfirmDialog
+      :show="showBatchDeleteDialog"
+      :title="t('admin.users.batchDelete.title')"
+      :message="t('admin.users.batchDelete.confirm', { count: selectedCount })"
+      :confirm-text="t('common.delete')"
+      :cancel-text="t('common.cancel')"
+      :danger="true"
+      @confirm="confirmBatchDelete"
+      @cancel="showBatchDeleteDialog = false"
+    />
     <UserCreateModal :show="showCreateModal" @close="showCreateModal = false" @success="loadUsers" />
     <UserEditModal :show="showEditModal" :user="editingUser" @close="closeEditModal" @success="loadUsers" />
     <BulkEditUserModal
@@ -1322,6 +1342,8 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showBulkEditModal = ref(false)
 const showDeleteDialog = ref(false)
+const showBatchDeleteDialog = ref(false)
+const batchDeleting = ref(false)
 const showApiKeysModal = ref(false)
 const showAttributesModal = ref(false)
 const showPlatformQuotaModal = ref(false)
@@ -1782,6 +1804,39 @@ const confirmDelete = async () => {
   } catch (error: any) {
     appStore.showError(error.response?.data?.detail || t('admin.users.failedToDelete'))
     console.error('Error deleting user:', error)
+  }
+}
+
+const confirmBatchDelete = async () => {
+  if (batchDeleting.value) return
+  const ids = Array.from(selectedIds.value)
+  if (ids.length === 0) {
+    showBatchDeleteDialog.value = false
+    return
+  }
+
+  batchDeleting.value = true
+  try {
+    const result = await adminAPI.users.batchDelete(ids)
+    const deleted = result.deleted || 0
+    const failed = result.failed || 0
+
+    if (failed === 0) {
+      appStore.showSuccess(t('admin.users.batchDelete.success', { count: deleted }))
+    } else if (deleted > 0) {
+      appStore.showInfo(t('admin.users.batchDelete.partial', { deleted, failed }))
+    } else {
+      appStore.showError(t('admin.users.batchDelete.failed'))
+    }
+
+    clearSelection()
+    showBatchDeleteDialog.value = false
+    await loadUsers()
+  } catch (error: any) {
+    appStore.showError(error.response?.data?.detail || t('admin.users.batchDelete.failed'))
+    console.error('Error batch deleting users:', error)
+  } finally {
+    batchDeleting.value = false
   }
 }
 

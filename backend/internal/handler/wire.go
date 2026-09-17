@@ -173,7 +173,9 @@ func ProvideAdminSettingHandler(settingService *service.SettingService, emailSer
 
 // ProvideHandlers creates the Handlers struct
 func ProvideHandlers(
+	authService *service.AuthService,
 	authHandler *AuthHandler,
+	registrationAbuseService *service.RegistrationAbuseService,
 	userHandler *UserHandler,
 	apiKeyHandler *APIKeyHandler,
 	usageHandler *UsageHandler,
@@ -198,6 +200,7 @@ func ProvideHandlers(
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
 ) *Handlers {
+	authService.SetRegistrationAbuseService(registrationAbuseService)
 	return &Handlers{
 		Auth:             authHandler,
 		User:             userHandler,

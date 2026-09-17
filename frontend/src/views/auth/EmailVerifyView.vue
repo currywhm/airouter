@@ -162,6 +162,27 @@
           </button>
         </div>
       </form>
+
+      <BaseDialog
+        :show="showAbuseWarning"
+        :title="t('auth.registrationAbuseBlockedTitle')"
+        width="narrow"
+        @close="showAbuseWarning = false"
+      >
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
+            <Icon name="exclamationCircle" size="md" class="text-red-600 dark:text-red-400" />
+          </div>
+          <p class="pt-1 text-sm leading-6 text-gray-700 dark:text-dark-300">
+            {{ t('auth.registrationAbuseBlocked') }}
+          </p>
+        </div>
+        <template #footer>
+          <button type="button" class="btn btn-primary" @click="showAbuseWarning = false">
+            {{ t('auth.registrationAbuseBlockedConfirm') }}
+          </button>
+        </template>
+      </BaseDialog>
     </div>
 
     <!-- Footer -->
@@ -182,6 +203,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -218,6 +240,7 @@ const appStore = useAppStore()
 // ==================== State ====================
 
 const isLoading = ref<boolean>(false)
+const showAbuseWarning = ref<boolean>(false)
 const isSendingCode = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const codeSent = ref<boolean>(false)
@@ -746,6 +769,12 @@ async function handleVerify(): Promise<void> {
     await router.push(pendingRedirect.value || '/dashboard')
   } catch (error: unknown) {
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.verifyFailed'))
+
+    if (extractApiErrorCode(error) === 'REGISTRATION_ABUSE_BLOCKED') {
+      errorMessage.value = t('auth.registrationAbuseBlocked')
+      showAbuseWarning.value = true
+      return
+    }
 
     appStore.showError(errorMessage.value)
   } finally {

@@ -249,6 +249,10 @@ export default {
       USER_NOT_ACTIVE: 'Account has been disabled.',
     },
     registrationFailed: 'Registration failed. Please try again.',
+    registrationAbuseBlockedTitle: 'Security notice',
+    registrationAbuseBlocked:
+      'Bulk registration or unusual invitation activity was detected. The related accounts have been removed, and the inviter balance and rebate quota have been cleared.',
+    registrationAbuseBlockedConfirm: 'I understand',
     emailDomainRegistrationLimit:
       'This email domain cannot register another account. Please use a mainstream email, or contact support to add your enterprise domain to the allowlist.',
     emailSuffixNotAllowed: 'This email domain is not allowed for registration.',

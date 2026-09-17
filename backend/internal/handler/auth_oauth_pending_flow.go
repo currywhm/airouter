@@ -419,6 +419,7 @@ func buildLegacyCompleteRegistrationPendingResponse(
 func (h *AuthHandler) legacyCompleteRegistrationSessionStatus(
 	c *gin.Context,
 	session *dbent.PendingAuthSession,
+	enforceEmailVerification bool,
 ) (*dbent.PendingAuthSession, bool, error) {
 	if session == nil {
 		return nil, false, infraerrors.BadRequest("PENDING_AUTH_SESSION_INVALID", "pending auth registration context is invalid")
@@ -429,7 +430,7 @@ func (h *AuthHandler) legacyCompleteRegistrationSessionStatus(
 		return session, true, nil
 	}
 
-	emailVerificationRequired := h != nil && h.authService != nil && h.authService.IsEmailVerifyEnabled(c.Request.Context())
+	emailVerificationRequired := enforceEmailVerification && h != nil && h.authService != nil && h.authService.IsEmailVerifyEnabled(c.Request.Context())
 	forceEmailOnSignup := h.isForceEmailOnThirdPartySignup(c.Request.Context())
 	if !emailVerificationRequired && !forceEmailOnSignup {
 		return session, false, nil

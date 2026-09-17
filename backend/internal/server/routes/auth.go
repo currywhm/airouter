@@ -24,6 +24,7 @@ func RegisterAuthRoutes(
 ) {
 	// 创建速率限制器
 	rateLimiter := middleware.NewRateLimiter(redisClient)
+	registrationAbuseGuard := servermiddleware.NewRegistrationAbuseGuard(redisClient)
 
 	// 公开接口
 	auth := v1.Group("/auth")
@@ -34,7 +35,7 @@ func RegisterAuthRoutes(
 		// 注册/登录/2FA/验证码发送均属于高风险入口，增加服务端兜底限流（Redis 故障时 fail-close）
 		auth.POST("/register", rateLimiter.LimitWithOptions("auth-register", 5, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
-		}), h.Auth.Register)
+		}), registrationAbuseGuard.Middleware(), h.Auth.Register)
 		auth.POST("/login", rateLimiter.LimitWithOptions("auth-login", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Login)
